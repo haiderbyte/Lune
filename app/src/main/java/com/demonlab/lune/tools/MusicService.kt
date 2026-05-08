@@ -54,6 +54,8 @@ class MusicService : Service() {
     private var widgetUpdateJob: Job? = null
     private var lastSongForBlur: Song? = null
     private var lastBlurredBitmap: Bitmap? = null
+    private var lastSongForRounded: Song? = null
+    private var cachedRoundedArt: Bitmap? = null
 
     private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -789,17 +791,28 @@ class MusicService : Service() {
                 views.setImageViewResource(R.id.widget_output_icon, getOutputIconRes())
                 views.setTextViewText(R.id.widget_output_text, getOutputName())
 
-                // Fetch and round art
-                val art = fetchAlbumArt(song)
-                if (art != null) {
-                    val roundedArt = LuneWidgetProvider.getRoundedCornerBitmap(art, 40) // 40px radius
-                    views.setImageViewBitmap(R.id.widget_cover, roundedArt)
-                    
-                    // Handle blurred background
-                    if (lastSongForBlur != song || lastBlurredBitmap == null) {
-                        lastSongForBlur = song
-                        lastBlurredBitmap = LuneWidgetProvider.getBlurredBitmap(this@MusicService, art, 25, 25)
+                // Fetch and process art only if song changed or cache is missing
+                if (lastSongForRounded != song || cachedRoundedArt == null) {
+                    val art = fetchAlbumArt(song)
+                    if (art != null) {
+                        lastSongForRounded = song
+                        cachedRoundedArt = LuneWidgetProvider.getRoundedCornerBitmap(art, 40)
+                        
+                        // Also update blur cache if song changed
+                        if (lastSongForBlur != song) {
+                            lastSongForBlur = song
+                            lastBlurredBitmap = LuneWidgetProvider.getBlurredBitmap(this@MusicService, art, 25, 25)
+                        }
+                    } else {
+                        lastSongForRounded = null
+                        cachedRoundedArt = null
+                        lastSongForBlur = null
+                        lastBlurredBitmap = null
                     }
+                }
+
+                if (cachedRoundedArt != null) {
+                    views.setImageViewBitmap(R.id.widget_cover, cachedRoundedArt)
                     
                     lastBlurredBitmap?.let {
                         views.setImageViewBitmap(R.id.widget_blurred_background, it)

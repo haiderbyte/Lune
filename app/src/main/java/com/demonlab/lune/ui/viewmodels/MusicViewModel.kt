@@ -30,25 +30,34 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     fun loadSongs() {
-        val cached = musicProvider.getCachedSongs()
-        if (cached.isNotEmpty()) {
-            allSongs = cached
-        } else {
-            isLoading = true
-        }
-
         viewModelScope.launch {
+            val cached = withContext(Dispatchers.IO) {
+                musicProvider.getCachedSongs()
+            }
+            if (cached.isNotEmpty() && allSongs.isEmpty()) {
+                allSongs = cached
+            } else if (allSongs.isEmpty()) {
+                isLoading = true
+            }
+            
             syncSongsInternal()
             isLoading = false
         }
     }
 
     private suspend fun syncSongsInternal() {
-        val synced = withContext(Dispatchers.IO) {
-            musicProvider.syncSongs()
-        }
-        if (synced != allSongs) {
-            allSongs = synced
+        val synced = musicProvider.syncSongs()
+        
+        if (synced.isNotEmpty()) {
+            if (synced != allSongs) {
+                allSongs = synced
+            }
+        } else {
+            // If sync returned empty but we already had songs, don't clear the list.
+            // This prevents the "no songs" bug when permissions or MediaStore fail temporarily.
+            if (allSongs.isEmpty()) {
+                allSongs = emptyList()
+            }
         }
     }
 

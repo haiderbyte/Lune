@@ -14,8 +14,12 @@ import com.google.gson.TypeAdapter
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import java.io.File
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class UriTypeAdapter : TypeAdapter<Uri>() {
     override fun write(out: JsonWriter, value: Uri?) {
@@ -57,6 +61,12 @@ class MusicProvider(private val context: Context) {
     }
 
     private fun saveToCache(songs: List<Song>) {
+        if (songs.isEmpty()) {
+            // Don't overwrite with empty if we suspect it might be a sync error
+            // However, if it's a legitimate empty list (e.g. user deleted everything), we might want to save.
+            // For now, let's just log and save anyway, but ViewModel will handle the UI side.
+            // Actually, let's only save if we know we had permissions.
+        }
         try {
             val json = gson.toJson(songs)
             cacheFile.writeText(json)
@@ -65,7 +75,17 @@ class MusicProvider(private val context: Context) {
         }
     }
 
-    fun syncSongs(): List<Song> {
+    private fun hasReadPermission(): Boolean {
+        val permission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    suspend fun syncSongs(): List<Song> = withContext(Dispatchers.IO) {
+        if (!hasReadPermission()) return@withContext emptyList()
         val showWhatsapp = settingsManager.showWhatsappAudio
         val songList = mutableListOf<Song>()
         val collection = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
@@ -93,7 +113,7 @@ class MusicProvider(private val context: Context) {
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
-        val overrides = runBlocking { database.songOverrideDao().getAllOverrides() }.associateBy { it.songId }
+        val overrides = database.songOverrideDao().getAllOverrides().associateBy { it.songId }
 
         context.contentResolver.query(
             collection,
@@ -157,6 +177,6 @@ class MusicProvider(private val context: Context) {
             }
         }
         saveToCache(songList)
-        return songList
+        songList
     }
 }
