@@ -48,40 +48,24 @@
   <img src="readme-res/10.jpg" width="140">
 </p>
 
-## 🛠 Build Requirements
+## 🛠 متطلبات البناء
 
-To build Lune from source, ensure your environment meets the following requirements:
+- Android Studio وAndroid SDK 36.
+- JDK 17 أو أحدث.
+- يستخدم المشروع Gradle Wrapper 9.2.1 المرفق؛ لا تحتاج إلى تثبيت Gradle يدويًا.
+- اضبط `ANDROID_HOME` إذا كنت تبني من الطرفية.
 
-- **JDK 17+**: Required for the current Gradle build version.
-- **Android SDK 36**: The project targets and compiles with the latest Android 15 APIs (SDK 36).
-- **Gradle**: Uses the provided Gradle wrapper (8.x+).
-
-Create this file for signing release
-
-**keystore.properties**:
+## 🚀 بناء نسخة Android للتجربة
 
 ```bash
-storeFile=key-file.jks
-storePassword=password
-keyAlias=alias
-keyPassword=password
+git clone https://github.com/haiderbyte/Lune.git
+cd Lune
+./gradlew assembleDebug
 ```
 
-## 🚀 How to Build
+بعد نجاح البناء، يوجد APK هنا: `app/build/outputs/apk/debug/app-debug.apk`.
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/MrDemonc/Lune.git
-   cd Lune
-   ```
-2. **Setup Environment**:
-   Ensure `ANDROID_HOME` is set to your local Android SDK location.
-3. **Build via Command Line**:
-   Run the following command to generate the release APK:
-   ```bash
-   ./gradlew assembleRelease
-   ```
-   The output APK will be available at: `app/build/outputs/apk/release/app-release.apk` (if not signed).
+لا تستخدم إعداد توقيع الإصدار الحالي لنشر نسخة رسمية قبل مراجعته: يحتوي إعداد البناء fallback غير آمن للتوقيع. أنشئ مفتاح توقيع خاصًا خارج المستودع وأزل أي قيم افتراضية ثابتة قبل إصدار نسخة Release. لا ترفع ملف keystore أو كلمات مروره إلى GitHub.
 
 ## 📱 F-Droid Information
 
